@@ -19,8 +19,8 @@ for i in range(len(Z)):
             if N[j]==n and Z[j]==z:                    #find mother nucleus
                 Q = (BE[i] + BE[53] - BE[j])/1000      #calculate Q-value for 14C decay
                 #print(BE[53])
-                print(Q)                          #print Q in MeV
-                T_log = Z[i]/np.sqrt(Q)           #calculate log(T1/2) of 14C decay
+                print(Q)                               #print Q in MeV
+                T_log = Z[i]/np.sqrt(Q)                #calculate log(T1/2) of 14C decay
                 print(T_log)
                 #print(np.power(10,T_log))
                 Tlit_a = 984960                        #half-life of alpha decay of 223Ra
@@ -31,6 +31,6 @@ for i in range(len(Z)):
                 print("logT_c = %s" %T_log)
                 print("B = %s" %B)
                 sys.stdout.close()
-                #res.write(' ',join('Q_c = ',str(Q/1000)))
+                
 
                 
