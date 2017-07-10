@@ -32,9 +32,8 @@ zmax: [integer] upper boundary (included) of the Z range.
 ================================================================================
 """
 
-import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib.ticker as ticker     # Needed to activate minor ticks.
+import matplotlib.pyplot as plt
 import sys     # For command line file input.
 
 nrange = []
@@ -88,10 +87,8 @@ def be(A, Z):
 # Determine the Z range from input values:
 zrange = range(zmin, zmax+1)
 
-output_basename = "NDL_"+str(sys.argv[1])+"-"+str(sys.argv[2])
-
-output = open(output_basename+".out","w")
-output.write("zmin = "+str(sys.argv[1])+"\n"+"zmax = "+str(sys.argv[2])+"\n\n"+"N     Z     Neutron separation energy")
+output = open("NDL_"+str(sys.argv[1])+"-"+str(sys.argv[2]),"w")
+output.write("zmin = "+str(sys.argv[1])+"\n"+"zmax = "+str(sys.argv[2])+"\n\n"+"A     Z     Neutron separation energy")
 
 for z in zrange:
     a = z+1     # Starting point: one neutron.
@@ -105,27 +102,18 @@ for z in zrange:
         sn = be(a, z) - be(a-1, z)     # Separation energy of the (A,Z) nucleus.
     drip_sn.append( be(a-1, z) - be(a-2, z) )     # At this point, the last calculated separation erergy is the first (strictly) negative, therefore the last positive or null is the previous one.
     nrange.append((a-1)-z)     # Store the value of n (si comment on the previous line to know why 'a-1').
-    output.write("\n"+str((a-1)-z)+"     "+str(z)+"     "+str(drip_sn[z-zmin]))     # Write in the output file. 'z-zmin' is the index of the last appended drip separation energy.
+    output.write("\n"+str(a-1)+"     "+str(z)+"     "+str(drip_sn[z-zmin]))     # Write in the output file. 'z-zmin' is the index of the last appended drip separation energy.
 
 output.close()
         
 # ==============================================================================
 # Plot the neutron drip line
 # ==============================================================================
-#plt.style.use("systematics")
-
-ax = plt.gca()
-
 plt.scatter(nrange, zrange, marker="s", color=[0.15,0.35,1])
 
 plt.title("Last neutron-bound nuclei for Z in ["+str(sys.argv[1])+","+str(sys.argv[2])+"]")
 plt.xlabel("N")
 plt.ylabel("Z")
-# Minor ticks:
-ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())
-ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
-
-plt.savefig(output_basename+".pdf")
 
 plt.show()
 plt.close()
