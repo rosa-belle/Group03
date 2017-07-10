@@ -2,17 +2,18 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 #Read data
-data = np.loadtxt("toiee.dat",usecols=(0,1,2,3,4,5))
+data = np.loadtxt("toiee.dat",usecols=(0,1,2,3,4,5,6))
 
 A = data[:,1]
 Z = data[:,2]
 J = data[:,3]
 n = data[:,5]
 p = data[:,4]
+E = data[:,6]
 
-ratio = [0]
-N = [0]
-a =[0]
+ratio = []
+N = []
+a =[]
 
 for i in range(len(A)):
     if J[i] == 8 and n[i]==1 and p[i]==1:                                                 #Look for yrast 8+ state
