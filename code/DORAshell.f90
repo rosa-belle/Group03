@@ -25,6 +25,9 @@ program DORA
   ! Build single-particle states
   call build_sp_states(mnsp)
 
+  ! Build Slater determinants
+  call slater
+
   ! Build Hamiltonian
   !call build_hamiltonian
 
@@ -143,3 +146,16 @@ subroutine build_sp_states(mnsp)
   
 end subroutine build_sp_states
 
+
+! ==============================================================================
+! BUILD SLATER DETERMINANTS
+! ==============================================================================
+subroutine slater(mnsp)
+  
+  implicit none
+
+  use input_DORA
+
+  do i = 
+
+end subroutine slater
