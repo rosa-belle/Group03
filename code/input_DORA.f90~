@@ -1,0 +1,7 @@
+module input_DORA
+  implicit none
+  integer, parameter :: 4     ! A
+  integer, parameter :: 0     ! Z
+  real, parameter    :: 0     ! M
+end module input_DORA
+
