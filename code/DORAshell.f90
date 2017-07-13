@@ -28,14 +28,10 @@ module global
      real :: mj     ! Total angular momentum projection.
   end type sp
   type(sp), dimension(mnsp) :: shell     ! One-dimensional array of sets of quantum numbers (single-particle states).
-!!$  type(sp), dimension(:), allocatable :: shell     ! One-dimensional array of sets of quantum numbers (single-particle states).
 
-!!$  type determinant
-!!$     integer, dimension (A-Z) :: det
-!!$  end type determinant
-  integer, dimension (A-Z) :: slater
-!!$  type(determinant) :: slater
-  integer, dimension (:, :), allocatable :: basis
+  integer :: dim     ! Dimension of the basis (it is determined in subroutine 'build_basis').
+  integer, dimension (A-Z) :: slater     ! Slater determinant.
+  integer, dimension (:, :), allocatable :: basis     ! Array in which each row is a Slater determinant (therefore its first dimension is the dimension of the basis).
 
 end module global
 
@@ -173,7 +169,7 @@ end subroutine build_sp_states
 
 
 ! ==============================================================================
-! BUILD SLATER DETERMINANTS
+! BUILD BASIS OF SLATER DETERMINANTS
 ! ==============================================================================
 subroutine build_basis
 
@@ -183,7 +179,7 @@ subroutine build_basis
   implicit none
 
   character (*), parameter :: fmt = '(i0' // repeat(', 1x, i0', A-Z - 1)//')'
-  integer :: N, k, dim
+  integer :: N, k
   
   N = A-Z     ! Simple variable change.
 
@@ -233,3 +229,14 @@ contains
   end subroutine gen
 
 end subroutine build_basis
+
+
+! ==============================================================================
+! BUILD HAMILTONIAN
+! ==============================================================================
+subroutine build_hamiltonian
+  
+  implicit none
+
+
+end subroutine build_hamiltonian
