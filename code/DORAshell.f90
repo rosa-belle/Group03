@@ -59,7 +59,7 @@ program DORA
   call build_basis
 
   ! Build Hamiltonian
-  !call build_hamiltonian
+  call build_hamiltonian
 
   ! Solve eigenproblem
   !call eigensolver
@@ -186,7 +186,7 @@ subroutine build_basis
   implicit none
 
   character (*), parameter :: fmt = '(i0' // repeat(', 1x, i0', A-Z - 1)//')'
-  integer :: N, k,e, ib, jb,row,col
+  integer :: N, k,e, ib, jb,row,col,f,b
   e = 1
   N = A-Z     ! Simple variable change.
 
@@ -198,25 +198,16 @@ subroutine build_basis
      allocate( basis(dim, N) )
      allocate( basis_pair(dim, N) )
   end if
-  open(unit=4, status='unknown', file='int.txt')     ! File
-  open(unit=3, status='unknown', file='int_pair.txt')     ! File
+  open(unit=4, status='unknown', file='basis.txt')     ! Basis File
+  open(unit=3, status='unknown', file='basis_pair.txt')     ! Pairing Basis File
   
   call gen(1)
-
-  !do ib=1,dim
-  !   do jb=1,N
-  !      write(4,*) basis(ib,jb)
-  !   end do
-  !end do
-  !do ib=1,dim
-  !  write(4,*) (basis(ib,jb), jb=1,N)
-  !end do
-  !do ib = 1, N
-  !   write(4, '(1000F14.7)') (real(basis(ib,jb)) ,jb=1,dim)
-  !end do
   
   close(4)
   close(3)
+  do f=1,6
+     write(6, '(1000I14)') (int(basis_pair(b,f)), b=1,4)
+  end do
 ! ------------------------------------------------------------------------------
 contains
 
@@ -226,7 +217,6 @@ contains
     integer, intent (in) :: c
     integer :: a, b, b2, f
     real :: mtot
-    !open(unit=4, status='unknown', file='int.dat')     ! File
     if (c > N) then
        !write(*, fmt) slater
        !Test for M
@@ -236,26 +226,17 @@ contains
        end do
        ! Check if 'mtot' is compatible with the allowed value 'M'
        if ( mtot .eq. M ) then
-          write(6, fmt) slater
+          !write(6, fmt) slater
           do b = 1, N
-             basis(b, e) = slater(b)
-             !write(4, *) basis(b,e)
-             e = e+1
+             basis(b, c) = slater(b)
           end do
-          
-          write(4, '(1000I14.7)') (int(basis(b,e)), b=1,N)
-          
-         !!!!Pairing: Check if n is the same
-          !write(*, fmt) basis
+          write(4, '(1000I14)') (int(basis(b,c)), b=1,N)
+         !Pairing: Check if n is the same
           if (shell(slater(1))%n .eq. shell(slater(2))%n .and. shell(slater(3))%n .eq. shell(slater(4))%n ) then
-             !write(6, fmt) slater
              do b = 1, N
-                basis_pair(b, e) = slater(b)
-                !write(4, fmt) basis_pair
-                f = f+1
+                basis_pair(b, c) = slater(b)
              end do
-             write(3, '(1000I14.7)') (int(basis(b,f)), b=1,N)
-             write(3, *)
+             write(3, '(1000I14)') (int(basis_pair(b,c)), b=1,N)
           end if
        end if
     else
@@ -265,7 +246,10 @@ contains
              call gen(c + 1)
           end if
        end do
-    end if    
+    end if
+ !   do f=1,d
+ !      write(6, '(1000I14)') (int(basis(b,f)), b=1,N)
+ !   end do
   end subroutine gen
 
 end subroutine build_basis
@@ -275,8 +259,27 @@ end subroutine build_basis
 ! BUILD HAMILTONIAN
 ! ==============================================================================
 subroutine build_hamiltonian
-  
+
+  use global
+  use input_DORA
   implicit none
-
-
+  integer :: d,r,d2,r2
+ 
+  real, dimension(dim,dim) :: Hmat
+  open(unit=3, status='unknown', file='basis_pair.txt')     ! Read Basis File
+  
+  !write(6,*) dim
+  !d=basis_pair(1,2)
+  !write(6,*) d
+  do d=1, dim
+     do r=1, dim
+        Hmat(d,r) = 0
+        write(6,*) Hmat(d,r)
+     end do
+  end do
+  open(unit=4, status='unknown', file='ham.txt')     ! Hmat File
+  do d2=1, dim
+     write(4, '(1000F14.7)') (real(Hmat(d2,r2)), r2=1,dim)
+  end do
+  close(4)
 end subroutine build_hamiltonian
