@@ -117,7 +117,7 @@ subroutine build_sp_states
   
   ! Loop over principal quantum numbers
   kn = -1
-  kl = 0
+  kl = 0 !For Pairing Problem
   spi = 0
   flag = .false.
  
@@ -126,7 +126,7 @@ subroutine build_sp_states
         exit
      end if
      kn = kn + 1
-     !do kl = 0, kn
+     !do kl = 0, kn   !Commented for Pairing Problem
         if ( flag .eqv. .true. ) then     ! If verified, then the sp array is already full.
            exit
         end if
@@ -205,9 +205,9 @@ subroutine build_basis
   
   close(4)
   close(3)
-  do f=1,6
-     write(6, '(1000I14)') (int(basis_pair(b,f)), b=1,4)
-  end do
+  !do f=1,6
+  !   write(6, '(1000I14)') (int(basis_pair(b,f)), b=1,4)
+  !end do
 ! ------------------------------------------------------------------------------
 contains
 
@@ -226,7 +226,7 @@ contains
        end do
        ! Check if 'mtot' is compatible with the allowed value 'M'
        if ( mtot .eq. M ) then
-          !write(6, fmt) slater
+          write(6, fmt) slater
           do b = 1, N
              basis(b, c) = slater(b)
           end do
