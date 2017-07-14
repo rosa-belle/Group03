@@ -22,16 +22,19 @@ module global
   include 'param_DORA.f90'
 
   type sp     ! N.B.: 'structure' and 'record' statements are pre-Fortran 90 statements that are equivalent to 'type' statements, but they are obsolete (not portable). Make sure to always use 'type'.
+     integer :: ind   ! Index
      integer :: n     ! Principal quantum number.
      integer :: l     ! Orbital momentum.
      real :: j     ! Total angular momentum.
      real :: mj     ! Total angular momentum projection.
+     real :: spe   !Single Particle Energy
   end type sp
   type(sp), dimension(mnsp) :: shell     ! One-dimensional array of sets of quantum numbers (single-particle states).
 
   integer :: dim     ! Dimension of the basis (it is determined in subroutine 'build_basis').
   integer, dimension (A-Z) :: slater     ! Slater determinant.
   integer, dimension (:, :), allocatable :: basis     ! Array in which each row is a Slater determinant (therefore its first dimension is the dimension of the basis).
+  integer, dimension (:, :), allocatable :: basis_pair     ! Array in which each row is a Slater determinant for the Pairing Problem (therefore its first dimension is the dimension of the basis).
 
 end module global
 
@@ -102,7 +105,7 @@ subroutine build_sp_states
   implicit none
 
   logical :: flag
-  integer :: kn, kl, spi, im     ! spi: single-particle state index in the 'shell' array.
+  integer :: kn, kl, spi, im      ! spi: single-particle state index in the 'shell' array.
   real :: kj, km
 
   open(unit=4, status='unknown', file='sp_states.dat')     ! File where all the single-particle states are stored.
@@ -110,18 +113,20 @@ subroutine build_sp_states
   ! Write header in 'sp_states.dat'
   write(4, *) 'SINGLE-PARTICLE STATES BUILT BY THE D.O.R.A. SHELL-MODEL CODE'
   write(4, *)
-  write(4, *) '          n          l            j          m_j'
+  write(4, *) '          #           n          l           j          m_j            SPE'
   
   ! Loop over principal quantum numbers
   kn = -1
+  kl = 0
   spi = 0
   flag = .false.
+ 
   do
      if ( flag .eqv. .true. ) then     ! If verified, then the sp array is already full.
         exit
      end if
      kn = kn + 1
-     do kl = 0, kn
+     !do kl = 0, kn
         if ( flag .eqv. .true. ) then     ! If verified, then the sp array is already full.
            exit
         end if
@@ -139,7 +144,9 @@ subroutine build_sp_states
            shell(spi)%l = kl
            shell(spi)%j = kj
            shell(spi)%mj = km
-           write(4, *) shell(spi)%n, shell(spi)%l, shell(spi)%j, shell(spi)%mj
+           shell(spi)%spe = kn
+           shell(spi)%ind = spi
+           write(4, *) shell(spi)%ind, shell(spi)%n, shell(spi)%l, shell(spi)%j, shell(spi)%mj, shell(spi)%spe
         end do
         ! First "m" loop for j=l-1/2
         kj = real(kl) - 0.5
@@ -156,7 +163,7 @@ subroutine build_sp_states
            shell(spi)%mj = km
            write(4, *) shell(spi)%n, shell(spi)%l, shell(spi)%j, shell(spi)%mj
         end do
-     end do
+     !end do
   end do
 
   write(4, *)
@@ -179,8 +186,8 @@ subroutine build_basis
   implicit none
 
   character (*), parameter :: fmt = '(i0' // repeat(', 1x, i0', A-Z - 1)//')'
-  integer :: N, k
-  
+  integer :: N, k,e, ib, jb,row,col
+  e = 1
   N = A-Z     ! Simple variable change.
 
   ! Check if 'basis' is allocated:
@@ -189,10 +196,27 @@ subroutine build_basis
      stop
   else
      allocate( basis(dim, N) )
+     allocate( basis_pair(dim, N) )
   end if
-
+  open(unit=4, status='unknown', file='int.txt')     ! File
+  open(unit=3, status='unknown', file='int_pair.txt')     ! File
+  
   call gen(1)
 
+  !do ib=1,dim
+  !   do jb=1,N
+  !      write(4,*) basis(ib,jb)
+  !   end do
+  !end do
+  !do ib=1,dim
+  !  write(4,*) (basis(ib,jb), jb=1,N)
+  !end do
+  !do ib = 1, N
+  !   write(4, '(1000F14.7)') (real(basis(ib,jb)) ,jb=1,dim)
+  !end do
+  
+  close(4)
+  close(3)
 ! ------------------------------------------------------------------------------
 contains
 
@@ -200,9 +224,9 @@ contains
 
     implicit none
     integer, intent (in) :: c
-    integer :: a, b
+    integer :: a, b, b2, f
     real :: mtot
-
+    !open(unit=4, status='unknown', file='int.dat')     ! File
     if (c > N) then
        !write(*, fmt) slater
        !Test for M
@@ -214,8 +238,25 @@ contains
        if ( mtot .eq. M ) then
           write(6, fmt) slater
           do b = 1, N
-             basis(c, b) = slater(b)
+             basis(b, e) = slater(b)
+             !write(4, *) basis(b,e)
+             e = e+1
           end do
+          
+          write(4, '(1000I14.7)') (int(basis(b,e)), b=1,N)
+          
+         !!!!Pairing: Check if n is the same
+          !write(*, fmt) basis
+          if (shell(slater(1))%n .eq. shell(slater(2))%n .and. shell(slater(3))%n .eq. shell(slater(4))%n ) then
+             !write(6, fmt) slater
+             do b = 1, N
+                basis_pair(b, e) = slater(b)
+                !write(4, fmt) basis_pair
+                f = f+1
+             end do
+             write(3, '(1000I14.7)') (int(basis(b,f)), b=1,N)
+             write(3, *)
+          end if
        end if
     else
        do a = 1, mnsp
@@ -224,8 +265,7 @@ contains
              call gen(c + 1)
           end if
        end do
-    end if
-    
+    end if    
   end subroutine gen
 
 end subroutine build_basis
