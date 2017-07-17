@@ -20,7 +20,9 @@ module global
 
   ! "Include" parameters (maximum values...)
   include 'param_DORA.f90'
-
+  
+  integer, parameter :: NN = A-Z
+  
   type sp     ! N.B.: 'structure' and 'record' statements are pre-Fortran 90 statements that are equivalent to 'type' statements, but they are obsolete (not portable). Make sure to always use 'type'.
      integer :: ind   ! Index
      integer :: n     ! Principal quantum number.
@@ -32,7 +34,6 @@ module global
   type(sp), dimension(mnsp) :: shell     ! One-dimensional array of sets of quantum numbers (single-particle states).
 
   integer :: dim     ! Dimension of the basis (it is determined in subroutine 'build_basis').
-  integer, dimension (A-Z) :: slater     ! Slater determinant.
   integer, dimension (:, :), allocatable :: basis     ! Array in which each row is a Slater determinant (therefore its first dimension is the dimension of the basis).
   integer, dimension (:, :), allocatable :: basis_pair     ! Array in which each row is a Slater determinant for the Pairing Problem (therefore its first dimension is the dimension of the basis).
 
@@ -73,22 +74,19 @@ end program DORA
 subroutine read_input
   
   use input_DORA
+  use global
 
   implicit none
 
-!  logical :: file_exists
-  integer :: N
-
 !  inquire(file='', exist=file_exists)
 
-  N = A-Z
   ! Test
-  if ( mod(N+int(2*M),2) .eq. 1 ) then
+  if ( mod(NN+int(2*M),2) .eq. 1 ) then
      write(6, *) " ERROR in subroutine 'input_DORA': Inconsistent M input. Exiting."
      stop
   end if
   write(6, *) 'Z= ', Z
-  write(6, *) 'N= ', N
+  write(6, *) 'N= ', NN
   write(6, *) 'M= ', M
 
 end subroutine read_input
@@ -185,22 +183,23 @@ subroutine build_basis
   
   implicit none
 
-  character (*), parameter :: fmt = '(i0' // repeat(', 1x, i0', A-Z - 1)//')'
-  integer :: N, k,e, ib, jb,row,col,f,b
+  integer, dimension (NN) :: slater     ! Slater determinant.
+  character (*), parameter :: fmt = '(i0' // repeat(', 1x, i0', NN - 1)//')'
+  integer :: k,e, ib, jb,row,col,f,b
   e = 1
-  N = A-Z     ! Simple variable change.
 
   ! Check if 'basis' is allocated:
   if ( allocated(basis) ) then
      write(6, *) " ERROR in subroutine 'build_basis': Array 'basis' is already allocated. Exiting"
      stop
   else
-     allocate( basis(dim, N) )
-     allocate( basis_pair(dim, N) )
+     allocate( basis(dim, NN) )
+     allocate( basis_pair(dim, NN) )
   end if
   open(unit=4, status='unknown', file='basis.txt')     ! Basis File
   open(unit=3, status='unknown', file='basis_pair.txt')     ! Pairing Basis File
   
+  dim = 0
   call gen(1)
   
   close(4)
@@ -217,26 +216,28 @@ contains
     integer, intent (in) :: c
     integer :: a, b, b2, f
     real :: mtot
-    if (c > N) then
+    if (c > NN) then
        !write(*, fmt) slater
        !Test for M
        mtot = 0e0
-       do b = 1, N
-          mtot = mtot + shell(slater(b))%mj
+       do b = 1, NN
+          mtot = mtot + shell(slater(b))%mj     ! 'slater(b)' is the single-particle state on which the particle labeled 'b' is sitting.
        end do
        ! Check if 'mtot' is compatible with the allowed value 'M'
        if ( mtot .eq. M ) then
-          write(6, fmt) slater
-          do b = 1, N
+          !dim = dim + 1     ! Uncomment for general case (and comment the same statement in the pairing part).
+          ! write(6, fmt) slater
+          do b = 1, NN
              basis(b, c) = slater(b)
           end do
-          write(4, '(1000I14)') (int(basis(b,c)), b=1,N)
+          write(4, '(1000I14)') (int(basis(b,c)), b=1,NN)
          !Pairing: Check if n is the same
           if (shell(slater(1))%n .eq. shell(slater(2))%n .and. shell(slater(3))%n .eq. shell(slater(4))%n ) then
-             do b = 1, N
+             dim = dim + 1
+             do b = 1, NN
                 basis_pair(b, c) = slater(b)
              end do
-             write(3, '(1000I14)') (int(basis_pair(b,c)), b=1,N)
+             write(3, '(1000I14)') (int(basis_pair(b,c)), b=1,NN)
           end if
        end if
     else
@@ -248,7 +249,7 @@ contains
        end do
     end if
  !   do f=1,d
- !      write(6, '(1000I14)') (int(basis(b,f)), b=1,N)
+ !      write(6, '(1000I14)') (int(basis(b,f)), b=1,NN)
  !   end do
   end subroutine gen
 
@@ -263,23 +264,35 @@ subroutine build_hamiltonian
   use global
   use input_DORA
   implicit none
+  integer, dimension(dim, NN) :: slater_ham     ! Slater determinant: this should be removed once we figure out how not to need a file 'basis_pair.txt'.
   integer :: d,r,d2,r2
- 
   real, dimension(dim,dim) :: Hmat
   open(unit=3, status='unknown', file='basis_pair.txt')     ! Read Basis File
   
-  !write(6,*) dim
-  !d=basis_pair(1,2)
-  !write(6,*) d
+  ! Read the SDs in the basis
+  do d = 1, dim
+     read(3, *) ( slater_ham(d, r), r=1,NN )
+  end do
+  
+  write(6,*) dim
+
+  ! Initialize hamiltonian matrix
   do d=1, dim
      do r=1, dim
         Hmat(d,r) = 0
-        write(6,*) Hmat(d,r)
      end do
+     write(6,*) ( Hmat(d,r), r=1,dim )
   end do
+
+  ! Function to calculate one-body expectation value
+
+
+  ! Print the hamiltonian to a file
   open(unit=4, status='unknown', file='ham.txt')     ! Hmat File
-  do d2=1, dim
-     write(4, '(1000F14.7)') (real(Hmat(d2,r2)), r2=1,dim)
+  do d=1, dim
+     write(4, '(1000F14.7)') (real(Hmat(d,r)), r=1,dim)
   end do
+
   close(4)
+
 end subroutine build_hamiltonian
