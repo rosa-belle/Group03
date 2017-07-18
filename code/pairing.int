@@ -1,8 +1,4 @@
-! Pairing interaction for 8 sps (according to 4 s1/2 shells)
-! Only one type of particles (e.g.: neutrons)
-
-! TBME
-! i, j, k, l TBME (g = -1)
+10
 1	2	1	2	-1	
 1	2	3	4	-1
 1	2	5	6	-1	

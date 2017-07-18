@@ -196,20 +196,20 @@ subroutine build_basis
      allocate( basis(dim, NN) )
      allocate( basis_pair(dim, NN) )
   end if
-  open(unit=4, status='unknown', file='basis.txt')     ! Basis File
-  open(unit=3, status='unknown', file='basis_pair.txt')     ! Pairing Basis File
+  open(unit=1, status='unknown', file='basis.txt')     ! Basis File
+  open(unit=2, status='unknown', file='basis_pair.txt')     ! Pairing Basis File
   
   dim = 0
   call gen(1)
   
-  close(4)
-  close(3)
+  close(1)
+  close(2)
   !do f=1,6
   !   write(6, '(1000I14)') (int(basis_pair(b,f)), b=1,4)
   !end do
-! ------------------------------------------------------------------------------
-contains
 
+contains
+! ------------------------------------------------------------------------------
   recursive subroutine gen (c)
 
     implicit none
@@ -230,14 +230,14 @@ contains
           do b = 1, NN
              basis(b, c) = slater(b)
           end do
-          write(4, '(1000I14)') (int(basis(b,c)), b=1,NN)
+          write(1, '(1000I14)') (int(basis(b,c)), b=1,NN)
          !Pairing: Check if n is the same
           if (shell(slater(1))%n .eq. shell(slater(2))%n .and. shell(slater(3))%n .eq. shell(slater(4))%n ) then
              dim = dim + 1
              do b = 1, NN
                 basis_pair(b, c) = slater(b)
              end do
-             write(3, '(1000I14)') (int(basis_pair(b,c)), b=1,NN)
+             write(2, '(1000I14)') (int(basis_pair(b,c)), b=1,NN)
           end if
        end if
     else
@@ -265,9 +265,15 @@ subroutine build_hamiltonian
   use input_DORA
   implicit none
   integer, dimension(dim, NN) :: slater_ham     ! Slater determinant: this should be removed once we figure out how not to need a file 'basis_pair.txt'.
-  integer :: d,r,d2,r2
-  real, dimension(dim,dim) :: Hmat
+  integer, dimension(2) :: phasedMatch     ! Array containing the index of a Slater determinant 
+  real, dimension(dim,dim) :: Hmat     ! Hamiltonian matrix.
+  real, dimension(:, :), allocatable :: ME     ! Matrix elements of the interaction.
+  integer :: d, r, nme, matchedSPState, k
+  real :: sum, spse, matchedEnergy, s, t, u, v
+  
   open(unit=3, status='unknown', file='basis_pair.txt')     ! Read Basis File
+  open(unit=4, status='unknown', file='pairing.int')     ! Read Basis File
+  open(unit=7, status='unknown', file='ham.txt')     ! Hmat File
   
   ! Read the SDs in the basis
   do d = 1, dim
@@ -276,23 +282,71 @@ subroutine build_hamiltonian
   
   write(6,*) dim
 
+  ! Read the interaction files
+  read(4, *) nme
+  allocate( ME(nme, 5) )
+  do r = 1, nme
+     read(4, *) ( ME(r, k), k=1,5 )
+  end do
+  
   ! Initialize hamiltonian matrix
-  do d=1, dim
-     do r=1, dim
+  do d = 1, dim
+     do r = 1, dim
         Hmat(d,r) = 0
      end do
-     write(6,*) ( Hmat(d,r), r=1,dim )
+!     write(6,*) ( Hmat(d,r), r=1,dim )
   end do
 
-  ! Function to calculate one-body expectation value
+  ! Build hamiltonian
+  !! Loop over all the Slater determinants
+  do d = 1, dim
+     sum = 0e0
+     do k = 1, nme
+        phasedMatch = tbev(ME(k,1), ME(k,2), ME(k,3), ME(k,4), d)
+        Hmat(d, phasedMatch(1)) = Hmat(d, phasedMatch(1)) + phasedMatch(2)*ME(k,5)
+     end do
+  end do
+  do d = 1, dim
+     spse = 0e0
+     do r = 1, NN
+        matchedSPState = slater_ham(d,r)
+        matchedEnergy = shell(matchedSPState)%spe
+        spse = spse + matchedEnergy
+     end do
+     write(6, *) spse
+     Hmat(d, d) = Hmat(d, d) + spse
+  end do
+
 
 
   ! Print the hamiltonian to a file
-  open(unit=4, status='unknown', file='ham.txt')     ! Hmat File
   do d=1, dim
-     write(4, '(1000F14.7)') (real(Hmat(d,r)), r=1,dim)
+     write(7, '(1000F14.7)') (real(Hmat(d,r)), r=1,dim)
   end do
 
+  close(3)
   close(4)
+  close(7)
+
+contains
+! ------------------------------------------------------------------------------
+! Auxiliary function to calculate Two-Body Expectation Values
+! ------------------------------------------------------------------------------
+  function tbev(s, t, u, v, d)
+
+    use global
+
+    integer :: d
+    real :: s, t, u, v
+    integer, dimension(2) :: tbev
+
+    do r = 1, NN
+       if ( u .ne. slater_ham(d,r)) then
+          
+       else ( v .ne. slater_ham(d,r) ) then
+       end if
+    end do
+
+  end function tbev
 
 end subroutine build_hamiltonian
