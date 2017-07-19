@@ -63,7 +63,7 @@ program DORA
   call build_hamiltonian
 
   ! Solve eigenproblem
-  call eigensolver
+  !call eigensolver
 
 end program DORA
 
@@ -148,7 +148,7 @@ subroutine build_sp_states
         end do
         ! First "m" loop for j=l-1/2
         kj = real(kl) - 0.5
-        do im = 0, int(2*kj)     ! Introducing a new summation index because it needs to be integer. N.B.: Because of the way the number of iterations in a do loop is natively calculated in Fortran, the case where 2*kj = -1 (it only happens for kl=0 and kj=kl-1/2) results in a
+        do im = 0, int(2*kj)     ! Introducing a new summation index because it needs to be integer. N.B.: Because of the way the n0umber of iterations in a do loop is natively calculated in Fortran, the case where 2*kj = -1 (it only happens for kl=0 and kj=kl-1/2) results in a
            if ( spi .ge. mnsp ) then     ! If verified, then the sp array is already full.
               exit
            end if
@@ -270,6 +270,15 @@ subroutine build_hamiltonian
   real, dimension(:, :), allocatable :: ME     ! Matrix elements of the interaction.
   integer :: d, r, nme, matchedSPState, k,dd
   real :: sum, spse, matchedEnergy, s, t, u, v
+
+  !!For Diagonalization
+  integer :: diaN, LDA, LWMAX, INFO, LWORK
+  real, dimension(dim) :: W
+  real, dimension(3*dim) :: WORK
+  diaN = dim
+  LDA = dim
+  LWORK = 5*diaN
+
   
   open(unit=3, status='unknown', file='basis_pair.txt')     ! Read Basis File
   open(unit=4, status='unknown', file='pairing.int')     ! Read Basis File
@@ -281,7 +290,7 @@ subroutine build_hamiltonian
      !WRITE(6, *) ( slater_ham(d, r), r=1,NN )
   end do
   
-  write(6,*) dim
+  !write(6,*) dim
 
   ! Read the interaction files
   read(4, *) nme
@@ -321,7 +330,7 @@ subroutine build_hamiltonian
         matchedEnergy = shell(matchedSPState)%spe
         spse = spse + matchedEnergy
      end do
-     write(6, *) spse
+     !write(6, *) spse
      Hmat(d, d) = Hmat(d, d) + spse
   end do
 
@@ -333,15 +342,36 @@ subroutine build_hamiltonian
   end do
 
 !!!!!!!!!!!!!!!!!!Diagonalize
+  
+  call SSYEV('N','U', diaN, Hmat, LDA, W, WORK, LWORK, INFO)
 
-  
-  
+  write(6,*) INFO
+  write(6,*) W
+  !!Eigenvalues
+  !call print_matrix('Eigenvalues',1,dim,W,1) 
 
   
   close(3)
   close(4)
   close(7)
 end subroutine build_hamiltonian
+
+
+subroutine print_matrix(DESC,M,dim,Hmat,LDA)
+  character*(*) :: DESC
+  integer :: M, dim, LDA
+  real, dimension(dim,dim) :: Hmat
+  integer :: i,j
+
+  write(*,*)
+  write(*,*) DESC
+  do i=1,M
+     write(*,*) (Hmat(i,j),j=1, dim)
+  end do
+
+  return
+
+end subroutine print_matrix
 
 !=======================================================================
 !EIGENSOLVER
@@ -364,6 +394,7 @@ end subroutine build_hamiltonian
 subroutine tbev(s, t, u, v, dd, slater_ham, phasedmatch)
 
   use global
+  implicit none
 
   integer :: t1, loc, r, phase, r2,dd
   real :: s, t, u, v
@@ -399,7 +430,7 @@ subroutine tbev(s, t, u, v, dd, slater_ham, phasedmatch)
            !write(6,*) test2(r)
         end if
      end do
-     write(6,*) test2
+     !write(6,*) test2
      if (inslate2 .eqv. .false.) then
         phasedmatch(1) = 0
         phasedmatch(2) = 0
