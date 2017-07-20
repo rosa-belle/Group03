@@ -297,30 +297,28 @@ subroutine build_hamiltonian
 !     write(6,*) ( Hmat(d,r), r=1,dim )
   end do
 
-  ! Build hamiltonian
-  !! Add the 2-body contribution to the Hamiltonian matrix elements (reminder: the Hamiltonian matrix elements are initialized to 0)
-  do d = 1, dim
-     sum = 0e0
-     do k = 1, nme
-        phasedMatch = tbev(ME(k,1), ME(k,2), ME(k,3), ME(k,4), d)
-        Hmat(d, phasedMatch(1)) = Hmat(d, phasedMatch(1)) + phasedMatch(2)*ME(k,5)     ! The 'Hmat' term in the r.h.s. is meant to add contributions (if any) of other configurations (if there are no previous ones, this term is 0 because of the initialization of the hamiltonian).
-     end do
-  end do
-  !! Add the 1-body contribution to the Hamiltonian matrix elements (reminder: the Hamiltonian matrix elements are initialized to 0)
-  do d = 1, dim
-     spse = 0e0
-     do r = 1, NN
-        matchedSPState = slater_ham(d,r)
-        matchedEnergy = shell(matchedSPState)%spe
-        spse = spse + matchedEnergy
-     end do
-     write(6, *) spse
-     Hmat(d, d) = Hmat(d, d) + spse
-  end do
+  ! ! Build hamiltonian
+  ! !! Add the 2-body contribution to the Hamiltonian matrix elements (reminder: the Hamiltonian matrix elements are initialized to 0)
+  ! do d = 1, dim
+  !    sum = 0e0
+  !    do k = 1, nme
+  !       phasedMatch = tbev(ME(k,1), ME(k,2), ME(k,3), ME(k,4), d)
+  !       Hmat(d, phasedMatch(1)) = Hmat(d, phasedMatch(1)) + phasedMatch(2)*ME(k,5)     ! The 'Hmat' term in the r.h.s. is meant to add contributions (if any) of other configurations (if there are no previous ones, this term is 0 because of the initialization of the hamiltonian).
+  !    end do
+  ! end do
+  ! !! Add the 1-body contribution to the Hamiltonian matrix elements (reminder: the Hamiltonian matrix elements are initialized to 0)
+  ! do d = 1, dim
+  !    spse = 0e0
+  !    do r = 1, NN
+  !       matchedSPState = slater_ham(d,r)
+  !       matchedEnergy = shell(matchedSPState)%spe
+  !       spse = spse + matchedEnergy
+  !    end do
+  !    write(6, *) spse
+  !    Hmat(d, d) = Hmat(d, d) + spse
+  ! end do
   
-  ! write(6, *) slater_ham(1,:) ! test
-  ! test = tbev(2., 3., 1., 4., 1) ! test
-  
+  test = tbev(5.,6., 3., 4., 1) ! test
 
 
   ! Print the hamiltonian to a file
@@ -352,17 +350,20 @@ contains
 
     use global
 
-    logical :: found
+    logical :: found, flag, matched
     integer :: d, i, j, o, p, x, y
     real :: s, t, u, v, temp     ! As a convention, we consider that s and t are the indices of the two creation operators, and that u and v are those of the annihilation operators.
     integer, dimension(2) :: tbev
     integer, dimension(NN) :: slater     ! An auxiliary Slater determinant.
+
+    write(6, *) slater_ham(d,:) ! test
 
     ! Initialization of the output
     tbev(1) = 1     ! Arbitrary.
     tbev(2) = 1     ! Phase that implies no sign change.
 
     found = .false.
+    matched = .false.
     slater = slater_ham(d,:)
     lookForFirst: do i = 1, NN
        if ( v .eq. slater_ham(d,i) ) then     ! If verified, then the annihilated state labeled 'v' is present in the ket SD. We next have to check the presence of the state labeled 'u'.
@@ -404,14 +405,27 @@ contains
                       end if
                       o = o + 1
                    end do orderLowest
+                   write(6, *) tbev(2) ! test
                    ! Look up the found Slater determinant in the basis
+                   write(6, *)
+                   write(6, *) slater
+                   write(6, *)
+                   flag = .true.
                    lookupDim: do x = 1, dim
-                      lookupPart: do 
-                      if ( slater_ham(q,:) .eq. slater ) then     ! If verified, then we have found the matching Slater determinant, and all that remains is to extract its index in the basis.
-                         tbev(1) = q
-                         exit lookup
+                      lookupPart: do y = 1, NN
+                         if ( slater_ham(x,y) .ne. slater(y) ) then     ! If verified, then the two Slater determinants do not match.
+                            flag = .false.
+                            exit lookupPart
+                         end if
+                      end do lookupPart
+                      if ( flag .eqv. .true. ) then     ! If verified, then we have found the matching Slater determinant, and all that remains is to extract its index in the basis.
+                         tbev(1) = x
+                         matched = .true.
+                         exit lookupDim
+                      else
+                         flag = .true.     ! We reset the flag.
                       end if
-                   end do lookup
+                   end do lookupDim
                    found = .true.
                    exit lookForFirst
                    exit lookForSecond
@@ -423,10 +437,13 @@ contains
           end if
        end if
     end do lookForFirst
-    if ( found .eqv. .false.) then     ! If verified, then we have not found any matching Slater determinant.
+    if ( matched .eqv. .false.) then     ! If verified, then we have not found any matching Slater determinant.
        tbev(1) = 1     ! Slater determinant (we chose whatever SD because the phase is 0).
        tbev(2) = 0     ! Phase.
     end if
+
+    ! test
+    write(6, *) tbev ! test
 
   end function tbev
 
