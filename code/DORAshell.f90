@@ -353,7 +353,7 @@ contains
     use global
 
     logical :: found
-    integer :: d, i, j
+    integer :: d, i, j, o, p
     real :: s, t, u, v     ! As a convention, we consider that s and t are the indices of the two creation operators, and that u and v are those of the annihilation operators.
     integer, dimension(2) :: tbev
     integer, dimension(NN) :: slater     ! An auxiliary Slater determinant.
@@ -375,6 +375,10 @@ contains
                 else     ! At this point, we are sure that s<t and u<v (convention) and that Slater determinants have their elements stored in increasing order (also convention), hence u<v implies j<i, hence the phase is 1 when annihilating v and then u, and the phase is 1 when creating t and then s. Hence the below assignments.
                    slater(i) = t
                    slater(j) = s
+                   ! Calculation of the phase: reordering of the states inside the Slater determinant and looking up the basis to find the matching Slater determinant
+                   do while (  )
+                      
+                   end do
                    found = .true.
                    exit lookForFirst
                    exit lookForSecond
