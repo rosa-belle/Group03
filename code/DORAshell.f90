@@ -353,7 +353,7 @@ contains
     use global
 
     logical :: found
-    integer :: d, i, j, o, p, q
+    integer :: d, i, j, o, p, x, y
     real :: s, t, u, v, temp     ! As a convention, we consider that s and t are the indices of the two creation operators, and that u and v are those of the annihilation operators.
     integer, dimension(2) :: tbev
     integer, dimension(NN) :: slater     ! An auxiliary Slater determinant.
@@ -405,7 +405,8 @@ contains
                       o = o + 1
                    end do orderLowest
                    ! Look up the found Slater determinant in the basis
-                   lookup: do q = 1, dim
+                   lookupDim: do x = 1, dim
+                      lookupPart: do 
                       if ( slater_ham(q,:) .eq. slater ) then     ! If verified, then we have found the matching Slater determinant, and all that remains is to extract its index in the basis.
                          tbev(1) = q
                          exit lookup
