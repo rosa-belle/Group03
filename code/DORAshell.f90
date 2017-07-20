@@ -376,7 +376,7 @@ contains
                    slater(i) = t
                    slater(j) = s
                    ! Calculation of the phase: reordering of the states inside the Slater determinant and looking up the basis to find the matching Slater determinant
-                   do while (  )
+                   do while (  )     ! Start with the "greatest" state (the "rightermost" one in the convention for ordering Slater determinants).
                       
                    end do
                    found = .true.
