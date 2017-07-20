@@ -354,9 +354,13 @@ contains
 
     logical :: found
     integer :: d, i, j, o, p
-    real :: s, t, u, v     ! As a convention, we consider that s and t are the indices of the two creation operators, and that u and v are those of the annihilation operators.
+    real :: s, t, u, v, temp     ! As a convention, we consider that s and t are the indices of the two creation operators, and that u and v are those of the annihilation operators.
     integer, dimension(2) :: tbev
     integer, dimension(NN) :: slater     ! An auxiliary Slater determinant.
+
+    ! Initialization of the output
+    tbev(1) = 1     ! Arbitrary.
+    tbev(2) = 1     ! Phase that implies no sign change.
 
     found = .false.
     slater = slater_ham(d,:)
@@ -376,9 +380,30 @@ contains
                    slater(i) = t
                    slater(j) = s
                    ! Calculation of the phase: reordering of the states inside the Slater determinant and looking up the basis to find the matching Slater determinant
-                   do while (  )     ! Start with the "greatest" state (the "rightermost" one in the convention for ordering Slater determinants).
-                      
-                   end do
+                   p = i + 1
+                   orderGreatest: do while ( p .gt. i .and. p .le. NN )     ! Start with the "greatest" state (the "rightermost" one in the convention for ordering Slater determinants).
+                      if ( t .gt. slater(p) ) then     ! If verified, t=slater(i) has to be exchanged with slater(p).
+                         temp = slater(p)
+                         slater(p) = t
+                         slater(p-1) = temp
+                         tbev(2) = tbev(2)*(-1)     ! Change the signe of the phase.
+                      else     ! In this case, there are no states "lower" than 't' in the next states, because the next states are already in increasing order in the Slater determinant.
+                            exit orderGreatest
+                      end if
+                      p = p + 1
+                   end do orderGreatest
+                   o = j + 1
+                   orderLowest: do while ( o .gt. j .and. o .le. NN )     ! Do the reordering for the second state.
+                      if ( s .gt. slater(o) ) then     ! If verified, t=slater(j) has to be exchanged with slater(o).
+                         temp = slater(o)
+                         slater(o) = s
+                         slater(o-1) = temp
+                         tbev(2) = tbev(2)*(-1)     ! Change the signe of the phase.
+                      else     ! In this case, there are no states "lower" than 's' in the next states, because the next states are already in increasing order in the Slater determinant.
+                            exit orderLowest
+                      end if
+                      o = o + 1
+                   end do orderLowest
                    found = .true.
                    exit lookForFirst
                    exit lookForSecond
