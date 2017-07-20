@@ -34,8 +34,8 @@ module global
   type(sp), dimension(mnsp) :: shell     ! One-dimensional array of sets of quantum numbers (single-particle states).
 
   integer :: dim     ! Dimension of the basis (it is determined in subroutine 'build_basis').
-  integer, dimension (:, :), allocatable :: basis     ! Array in which each row is a Slater determinant (therefore its first dimension is the dimension of the basis).
-  integer, dimension (:, :), allocatable :: basis_pair     ! Array in which each row is a Slater determinant for the Pairing Problem (therefore its first dimension is the dimension of the basis).
+  integer, dimension(:, :), allocatable :: basis     ! Array in which each row is a Slater determinant (therefore its first dimension is the dimension of the basis).
+  integer, dimension(:, :), allocatable :: basis_pair     ! Array in which each row is a Slater determinant for the Pairing Problem (therefore its first dimension is the dimension of the basis).
 
 end module global
 
@@ -183,7 +183,7 @@ subroutine build_basis
   
   implicit none
 
-  integer, dimension (NN) :: slater     ! Slater determinant.
+  integer, dimension(NN) :: slater     ! Slater determinant.
   character (*), parameter :: fmt = '(i0' // repeat(', 1x, i0', NN - 1)//')'
   integer :: k,e, ib, jb,row,col,f,b
   e = 1
@@ -265,11 +265,11 @@ subroutine build_hamiltonian
   use input_DORA
   implicit none
   integer, dimension(dim, NN) :: slater_ham     ! Slater determinant: this should be removed once we figure out how not to need a file 'basis_pair.txt'.
-  integer, dimension(2) :: phasedMatch     ! Array containing the index of a Slater determinant 
+  integer, dimension(2) :: phasedMatch, test     ! 2-element array containing the index of a Slater determinant (determined by the tbev function) as the first element and the associated phase as the second.
   real, dimension(dim,dim) :: Hmat     ! Hamiltonian matrix.
   real, dimension(:, :), allocatable :: ME     ! Matrix elements of the interaction.
   integer :: d, r, nme, matchedSPState, k
-  real :: sum, spse, matchedEnergy, s, t, u, v
+  real :: sum, spse, matchedEnergy, s, t, u, v     ! spse: sp state energy.
   
   open(unit=3, status='unknown', file='basis_pair.txt')     ! Read Basis File
   open(unit=4, status='unknown', file='pairing.int')     ! Read Basis File
@@ -280,7 +280,7 @@ subroutine build_hamiltonian
      read(3, *) ( slater_ham(d, r), r=1,NN )
   end do
   
-  write(6,*) dim
+  write(6,*) " Dimension of the Slater determinant basis: ", dim
 
   ! Read the interaction files
   read(4, *) nme
@@ -298,14 +298,15 @@ subroutine build_hamiltonian
   end do
 
   ! Build hamiltonian
-  !! Loop over all the Slater determinants
+  !! Add the 2-body contribution to the Hamiltonian matrix elements (reminder: the Hamiltonian matrix elements are initialized to 0)
   do d = 1, dim
      sum = 0e0
      do k = 1, nme
         phasedMatch = tbev(ME(k,1), ME(k,2), ME(k,3), ME(k,4), d)
-        Hmat(d, phasedMatch(1)) = Hmat(d, phasedMatch(1)) + phasedMatch(2)*ME(k,5)
+        Hmat(d, phasedMatch(1)) = Hmat(d, phasedMatch(1)) + phasedMatch(2)*ME(k,5)     ! The 'Hmat' term in the r.h.s. is meant to add contributions (if any) of other configurations (if there are no previous ones, this term is 0 because of the initialization of the hamiltonian).
      end do
   end do
+  !! Add the 1-body contribution to the Hamiltonian matrix elements (reminder: the Hamiltonian matrix elements are initialized to 0)
   do d = 1, dim
      spse = 0e0
      do r = 1, NN
@@ -316,7 +317,10 @@ subroutine build_hamiltonian
      write(6, *) spse
      Hmat(d, d) = Hmat(d, d) + spse
   end do
-
+  
+  ! write(6, *) slater_ham(1,:) ! test
+  ! test = tbev(2., 3., 1., 4., 1) ! test
+  
 
 
   ! Print the hamiltonian to a file
@@ -331,21 +335,61 @@ subroutine build_hamiltonian
 contains
 ! ------------------------------------------------------------------------------
 ! Auxiliary function to calculate Two-Body Expectation Values
+!    This function takes three sp state indices (which represent the
+!    creation/annihilation operators in the expectation values) and one Slater
+!    determinant index (which represent the ket in the expectation value).
+!    It outputs:
+!    - the index of the only (because we want an orthogonal basis) Slater
+!      determinant (as the bra), if any, that makes the expectation value non
+!      zero. If there is no such Slater determinant, the index is set to 1
+!      (which does not matter because the corresponding output phase is 0).
+!    - the "phase" (1, -1 or 0) that multiplies the absolute value of the
+!      expectation value (given the contractions that have to be done). A phase
+!      set to 0 means that no Slater determinant was found in the basis that
+!      makes the expectation value non-zero.
 ! ------------------------------------------------------------------------------
   function tbev(s, t, u, v, d)
 
     use global
 
-    integer :: d
-    real :: s, t, u, v
+    logical :: found
+    integer :: d, i, j
+    real :: s, t, u, v     ! As a convention, we consider that s and t are the indices of the two creation operators, and that u and v are those of the annihilation operators.
     integer, dimension(2) :: tbev
+    integer, dimension(NN) :: slater     ! An auxiliary Slater determinant.
 
-    do r = 1, NN
-       if ( u .ne. slater_ham(d,r)) then
-          
-       else ( v .ne. slater_ham(d,r) ) then
+    found = .false.
+    slater = slater_ham(d,:)
+    lookForFirst: do i = 1, NN
+       if ( v .eq. slater_ham(d,i) ) then     ! If verified, then the annihilated state labeled 'v' is present in the ket SD. We next have to check the presence of the state labeled 'u'.
+          lookForSecond: do j = 1, NN
+             if ( u .eq. slater_ham(d,j) ) then     ! If verified, then the annihilated state labeled 'u' is present in the ket SD. Given the above, it means that a matching Slater determiant was found.
+                if ( u .eq. v .or. s .eq. t ) then     ! This test avoids the case where u=v or s=t, which could be an error in the interaction file.
+                   write(6, *) " ERROR in function 'tbev': Two equal annihilated or created states where given as arguments."
+                   write(6, *) " Probable error in the interaction file. Exiting."
+                   stop
+                else if ( u .gt. v .or. s .gt. t ) then     ! This test avoids the case where u>v or s>t, which could be an error in the interaction file.
+                   write(6, *) " ERROR in function 'tbev': Two annihilated or created states given as arguments are in the wrong&
+                        & order. Probable error in the interaction file. Exiting."
+                   stop
+                else     ! At this point, we are sure that s<t and u<v (convention) and that Slater determinants have their elements stored in increasing order (also convention), hence u<v implies j<i, hence the phase is 1 when annihilating v and then u, and the phase is 1 when creating t and then s. Hence the below assignments.
+                   slater(i) = t
+                   slater(j) = s
+                   found = .true.
+                   exit lookForFirst
+                   exit lookForSecond
+                end if
+             end if
+          end do lookForSecond
+          if ( found .eqv. .false. ) then     ! If verified, then we have not found the state 'u' in the Slater determinant, therefore there is no need to continue.
+             exit lookForFirst
+          end if
        end if
-    end do
+    end do lookForFirst
+    if ( found .eqv. .false.) then     ! If verified, then we have not found any matching Slater determinant.
+       tbev(1) = 1     ! Slater determinant (we chose whatever SD because the phase is 0).
+       tbev(2) = 0     ! Phase.
+    end if
 
   end function tbev
 
